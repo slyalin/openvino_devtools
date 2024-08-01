@@ -1,9 +1,11 @@
 # ov2py
-Python tool that converts OpenVINO Model into a pretty-printed Python code that recreates the original model.
+Python tool that converts [OpenVINO](https://github.com/openvinotoolkit/openvino) Model into a pretty-printed Python code that recreates the original model.
 The resulting code could be used for easier (in comparison to `XML`) model exploration and modification.
 
 
 ## Installation
+
+You need to have OpenVINO installed, including OpenVINO Python API. The installation script of the tool doesn't install it.
 
 ```console
 pip install git+https://github.com/slyalin/openvino_devtools.git
