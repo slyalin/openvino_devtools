@@ -116,6 +116,6 @@ print(ov2py(ov_model, with_node_names=True, entry_point=True))
 The following features of OpenVINO model are not supported:
 - Custom operations.
 - Arbitrary standard opsets (now it is fixed to `opset13`).
-- Run-time info of any kind: in at a node level and at a model level (meta information).
+- Run-time info of any kind: at the node level and at the model level (meta information).
 - Control flow operations.
 - Original model is always required to run `build_model` for `Constant` ops content (when the re-generated OpenVINO model is saved to IR, the orignal model is no longer needed).
