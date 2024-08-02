@@ -13,7 +13,7 @@ pip install git+https://github.com/slyalin/openvino_devtools.git
 
 ## Usage
 
-`ov2py` can be used in two ways: as a command line utility `ov2py` or as a Pytnon module `openvino_devtools.ov2py`.
+`ov2py` can be used in two ways: as a command line utility `ov2py` or as a Python module `openvino_devtools.ov2py`.
 
 ### Command Line
 
