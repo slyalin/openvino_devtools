@@ -69,6 +69,11 @@ $ python generator.py name_of_destination.xml
 The result is OpenVINO IR saved into `name_of_destination.xml` and `name_of_destination.bin` files with re-generated original model.
 You can easily modify `generator.py` before running the script as it is a regular Python code.
 
+Note that the resulting Python code uses `OpFactory` from `openvino_devtools.builder` instead of the original [OpenVINO Python API](https://docs.openvino.ai/2024/api/ie_python_api/_autosummary/openvino.runtime.opset13.html) to create operations.
+Using `OpFactory` as a wrapper for OpenVINO Python API unlocks an easy way to override the original operation-building functionality by
+replacing `OpFactory` with a custom factory class.
+When modifying the generated code, you can mix the original Python API with `OpFactory` calls.
+
 While the main purpose of `ov2py` is to print out OpenVINO models, as a bonus functionality it accepts all [supported in OpenVINO model file formats](https://docs.openvino.ai/2024/openvino-workflow/model-preparation.html)
 that can be loaded with `ov.Core.read_model`. For example, having ONNX model you can run:
 
