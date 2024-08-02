@@ -69,6 +69,16 @@ $ python generator.py name_of_destination.xml
 The result is OpenVINO IR saved into `name_of_destination.xml` and `name_of_destination.bin` files with re-generated original model.
 You can easily modify `generator.py` before running the script as it is a regular Python code.
 
+While the main purpose of `ov2py` is to print out OpenVINO models, as a bonus functionality it accepts all [supported in OpenVINO model file formats](https://docs.openvino.ai/2024/openvino-workflow/model-preparation.html)
+that can be loaded with `ov.Core.read_model`. For example, having ONNX model you can run:
+
+```console
+$ ov2py your_onnx_model.onnx
+```
+
+and `ov2py` converts the model from a source format to OpenVINO model with `ov.Core.read_model` and print it out.
+This functionality is convenient to explore a model compute graph in a uniform way using OpenVINO operation set without the knowledge of the original model format.
+
 ### Python Module
 
 Using the module in Python is useful for debugging, especially in Jupyter Notebooks when you can generate the model as Python text,
