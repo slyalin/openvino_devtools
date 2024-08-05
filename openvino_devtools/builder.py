@@ -10,8 +10,8 @@ def get_attribute_value_in_python(a):
     return "'" + a + "'" if isinstance(a, str) else "'" + str(a) + "'" if isinstance(a, PartialShape) else a
 
 def get_output_names(op):
-    output_names = [port.get_names() for port in op.outputs()]
-    if any(output_names):
+    output_names = '[' + ', '.join('{' + ', '.join(sorted(f"'{name}'" for name in port.get_names())) + '}' for port in op.outputs()) + ']'  #FIXME: sorting names as a workaround for non deterministic order
+    if any(port.get_names() for port in op.outputs()):
         return ', output_names=' + str(output_names)
     else:
         return ''
