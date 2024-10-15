@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Dict, Iterator
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='[ %(levelname)s ] %(message)s', stream=sys.stdout)
+logging.basicConfig(level=logging.INFO, format='%(message)s', stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
 
