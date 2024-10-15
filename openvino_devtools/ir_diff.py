@@ -1,12 +1,34 @@
 #!/usr/bin/env python3
 
 """
-This script is designed to compare XML files in two directories and report differences in <layer> tags.
-It scans the directories, collects operation counts from the XML files, and prints any differences
-in the operations count between the reference and target files. The script also includes an option
-to filter out files containing 'tokenizer' in their names.
+This script is designed to compare XML files in two directories or two individual XML files and
+report differences in <layer> tags. It scans the directories, collects operation counts from the XML
+files, and prints any differences in the operations count between the reference and target files.
+The script also includes an option to filter out files containing 'tokenizer' in their names.
 
+Usage:
 ./ir_diff.py [--filter-tokenizer | --no-filter-tokenizer] <reference_directory> <target_directory>
+
+Output example:
+> ./ir_diff.py /path/to/reference/folder /path/to/target/folder
+
+Reference: /path/to/reference/folder
+Target: /path/to/target/folder
+Filter tokenizer files: True
+====================================================================================================
+Diff: openvino_model.xml
+Op difference detected
+op_name                     ref   target    r-t
+-------------------------------------------------
+Add                           228     197      31
+Const                        2851    2628     223
+Gather                        361     296      65
+ShapeOf                       230     166      64
+Slice                         162     131      31
+-------------------------------------------------
+Total                        7040    6626     414
+.bin file sizes are equal: 8035958816 bytes
+====================================================================================================
 """
 import argparse
 import logging

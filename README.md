@@ -1,3 +1,9 @@
+## Tools
+
+This repository includes several tools:
+- ov2py
+- ir_diff
+
 # ov2py
 Python tool that converts [OpenVINO](https://github.com/openvinotoolkit/openvino) Model into a pretty-printed Python code that recreates the original model.
 The resulting code can be used for easier (in comparison to `XML`) model exploration and modification.
@@ -17,7 +23,7 @@ pip install git+https://github.com/slyalin/openvino_devtools.git
 
 ### Command Line
 
-When used in the command line, it accepst a path to OpenVINO IR `XML` file and prints the resulting Python code to stdout:
+When used in the command line, it accepts a path to OpenVINO IR `XML` file and prints the resulting Python code to stdout:
 
 ```console
 $ ov2py your_openvino_model.xml
@@ -136,3 +142,36 @@ The following features of OpenVINO model are not supported:
 - Run-time info of any kind: at the node level and at the model level (meta information).
 - Control flow operations.
 - Original model is always required to run `build_model` for `Constant` ops content (when the re-generated OpenVINO model is saved to IR, the orignal model is no longer needed).
+
+# ir_diff
+Compares XML files in two directories or two individual XML files and reports differences in <layer> tags.
+It scans the directories, collects operation counts from the XML files, and prints any differences in the operations count between the reference and target files.
+The script also includes an option to filter out files containing 'tokenizer' in their names.
+
+Usage:
+```console
+$ ./ir_diff.py [--filter-tokenizer | --no-filter-tokenizer] <reference_directory> <target_directory>
+```
+
+Output example:
+```console
+$ ./ir_diff.py /path/to/reference/folder /path/to/target/folder
+
+Reference: /path/to/reference/folder
+Target: /path/to/target/folder
+Filter tokenizer files: True
+====================================================================================================
+Diff: openvino_model.xml
+Op difference detected
+op_name                     ref   target    r-t
+-------------------------------------------------
+Add                           228     197      31
+Const                        2851    2628     223
+Gather                        361     296      65
+ShapeOf                       230     166      64
+Slice                         162     131      31
+-------------------------------------------------
+Total                        7040    6626     414
+.bin file sizes are equal: 8035958816 bytes
+====================================================================================================
+```
