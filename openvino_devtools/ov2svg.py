@@ -2,11 +2,10 @@ import sys
 import openvino as ov
 import os
 
-def enable_graph_dumper(enable=True):
+def set_graph_dumper_env(enable=True):
     import os
     #TODO: Make it configurable by arguments
     envs_to_set = [
-        'OV_ENABLE_VISUALIZE_TRACING',
         'OV_VISUALIZE_TREE_OUTPUT_SHAPES',
         'OV_VISUALIZE_TREE_OUTPUT_TYPES',
         'OV_VISUALIZE_TREE_EDGE_LABELS',
@@ -14,24 +13,37 @@ def enable_graph_dumper(enable=True):
     for e in envs_to_set:
         os.environ[e] = '1' if enable else '0'
 
-def serialize_model_svg (model, output_name='serialized_model_svg'):
+def serialize_model_svg (model, output_name='serialized_model.svg'):
     #TODO: Keep original values of envs and restore them in the end
+    from openvino.runtime.passes import VisualizeTree
+    set_graph_dumper_env(True)
+    VisualizeTree(output_name).run_on_model(model)
+    set_graph_dumper_env(False)
 
-    from openvino.runtime.passes import Manager, GraphRewrite
-    enable_graph_dumper(True)
-    manager = Manager()
-    manager.set_per_pass_validation(False)
-    anchor = manager.register_pass(GraphRewrite())
-    anchor.set_name(output_name)
-    manager.run_passes(model)
-    enable_graph_dumper(False)
+def set_symbols(model):
+    for parameter in model.get_parameters():
+        shape = parameter.get_output_partial_shape(0)
+        new_dims = []
+        has_dynamic = False
+        for dim in shape:
+            if dim.is_dynamic:
+                dim.set_symbol(ov.Symbol())
+                has_dynamic = True
+            new_dims.append(dim)
+        if has_dynamic:
+            parameter.set_shape(ov.PartialShape(new_dims))
 
 def ov2svg (input_name, output_name=None):
     core = ov.Core()
+    extension = '.svg'
     model = core.read_model(input_name)
+    set_symbols(model)
     model.validate_nodes_and_infer_types()  # to propagate shape in stateful models
     if output_name is None:
-        output_name = os.path.splitext(os.path.basename(input_name))[0]
+        output_name = os.path.splitext(os.path.basename(input_name))[0] + extension
+        print(output_name)
+    elif not output_name.endswith(extension):
+        output_name += extension
     serialize_model_svg(model, output_name)
 
 def main():
