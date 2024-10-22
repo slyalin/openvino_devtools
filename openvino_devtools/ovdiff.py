@@ -7,10 +7,10 @@ files, and prints any differences in the operations count between the reference 
 The script also includes an option to filter out files containing 'tokenizer' in their names.
 
 Usage:
-./ir_diff.py [--filter-tokenizer | --no-filter-tokenizer] <reference_directory> <target_directory>
+> ovdiff [--filter-tokenizer | --no-filter-tokenizer] <reference_directory> <target_directory>
 
 Output example:
-> ./ir_diff.py /path/to/reference/folder /path/to/target/folder
+> ovdiff /path/to/reference/folder /path/to/target/folder
 
 Reference: /path/to/reference/folder
 Target: /path/to/target/folder

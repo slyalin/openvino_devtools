@@ -41,7 +41,6 @@ def ov2svg (input_name, output_name=None):
     model.validate_nodes_and_infer_types()  # to propagate shape in stateful models
     if output_name is None:
         output_name = os.path.splitext(os.path.basename(input_name))[0] + extension
-        print(output_name)
     elif not output_name.endswith(extension):
         output_name += extension
     serialize_model_svg(model, output_name)

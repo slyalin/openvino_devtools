@@ -1,13 +1,11 @@
-## Tools
+# Tools
 
 This repository includes several tools:
 - ov2py
-- ir_diff
+- ovdiff
+- ov2svg
 
-# ov2py
-Python tool that converts [OpenVINO](https://github.com/openvinotoolkit/openvino) Model into a pretty-printed Python code that recreates the original model.
-The resulting code can be used for easier (in comparison to `XML`) model exploration and modification.
-
+They all are available as command line scripts after installation. See usage details for each tool below.
 
 ## Installation
 
@@ -16,6 +14,11 @@ You need to have OpenVINO installed, including OpenVINO Python API. The installa
 ```console
 pip install git+https://github.com/slyalin/openvino_devtools.git
 ```
+
+# ov2py
+Python tool that converts [OpenVINO](https://github.com/openvinotoolkit/openvino) Model into a pretty-printed Python code that recreates the original model.
+The resulting code can be used for easier (in comparison to `XML`) model exploration and modification.
+
 
 ## Usage
 
@@ -143,19 +146,19 @@ The following features of OpenVINO model are not supported:
 - Control flow operations.
 - Original model is always required to run `build_model` for `Constant` ops content (when the re-generated OpenVINO model is saved to IR, the orignal model is no longer needed).
 
-# ir_diff
+# ovdiff
 Compares XML files in two directories or two individual XML files and reports differences in <layer> tags.
 It scans the directories, collects operation counts from the XML files, and prints any differences in the operations count between the reference and target files.
 The script also includes an option to filter out files containing 'tokenizer' in their names.
 
 Usage:
 ```console
-$ ./ir_diff.py [--filter-tokenizer | --no-filter-tokenizer] <reference_directory> <target_directory>
+$ ovdiff [--filter-tokenizer | --no-filter-tokenizer] <reference_directory> <target_directory>
 ```
 
 Output example:
 ```console
-$ ./ir_diff.py /path/to/reference/folder /path/to/target/folder
+$ ovdiff /path/to/reference/folder /path/to/target/folder
 
 Reference: /path/to/reference/folder
 Target: /path/to/target/folder
@@ -175,3 +178,19 @@ Total                        7040    6626     414
 .bin file sizes are equal: 8035958816 bytes
 ====================================================================================================
 ```
+
+
+# ov2svg
+
+Generates visual SVG representation of a given OpenVINO model. Requires `graphviz` `dot` command line utility to produce an SVG file.
+Leverages builtin OpenVINO capabilities implemented in `VisualizeTree` transformation.
+Enables additional annotations like tensor shapes, types and symbols.
+
+Usage:
+```console
+$ ov2svg <model.xml> [ <output_file.svg> ]
+```
+
+If `<output_file.svg>` is not provided then `model.svg` will be used as output name, where `model` is a part of input file name.
+If `<output_file.svg>` has no `.svg` extension, it will be added.
+The tool overrides existing output file without a warning.
