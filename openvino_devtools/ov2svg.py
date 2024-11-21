@@ -9,7 +9,9 @@ def set_graph_dumper_env(enable=True):
         'OV_VISUALIZE_TREE_OUTPUT_SHAPES',
         'OV_VISUALIZE_TREE_OUTPUT_TYPES',
         'OV_VISUALIZE_TREE_EDGE_LABELS',
-        'OV_VISUALIZE_PARTIAL_VALUES_AND_LABELS']
+        'OV_VISUALIZE_PARTIAL_VALUES_AND_LABELS',
+        'OV_VISUALIZE_APPLY_SYMBOLIC_PROPAGATION',
+    ]
     for e in envs_to_set:
         os.environ[e] = '1' if enable else '0'
 
@@ -20,25 +22,10 @@ def serialize_model_svg (model, output_name='serialized_model.svg'):
     VisualizeTree(output_name).run_on_model(model)
     set_graph_dumper_env(False)
 
-def set_symbols(model):
-    for parameter in model.get_parameters():
-        shape = parameter.get_output_partial_shape(0)
-        new_dims = []
-        has_dynamic = False
-        for dim in shape:
-            if dim.is_dynamic:
-                dim.set_symbol(ov.Symbol())
-                has_dynamic = True
-            new_dims.append(dim)
-        if has_dynamic:
-            parameter.set_shape(ov.PartialShape(new_dims))
-
 def ov2svg (input_name, output_name=None):
     core = ov.Core()
     extension = '.svg'
     model = core.read_model(input_name)
-    set_symbols(model)
-    model.validate_nodes_and_infer_types()  # to propagate shape in stateful models
     if output_name is None:
         output_name = os.path.splitext(os.path.basename(input_name))[0] + extension
     elif not output_name.endswith(extension):
