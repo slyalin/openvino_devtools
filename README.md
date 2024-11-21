@@ -194,3 +194,39 @@ $ ov2svg <model.xml> [ <output_file.svg> ]
 If `<output_file.svg>` is not provided then `model.svg` will be used as output name, where `model` is a part of input file name.
 If `<output_file.svg>` has no `.svg` extension, it will be added.
 The tool overrides existing output file without a warning.
+
+
+# ovstat
+
+Gives the aggregated statistics on operations used in the model alongside with input and output tensor types and attribute values.
+The aggregation group together all static dimensions and denote it as `S`.
+Similarly, it aggregates all dynamic dimensions and denote them as `?`.
+Shape-like operation attributes are aggregated in the same way.
+Attribute `variable_id` values in operations `ReadValue` and `Assign` are aggregated as well and denoted as `S`.
+Number of operations in each group is printed at the end of the line, after the tabulation symbol.
+
+Usage:
+
+```console
+$ ovstat <model.xml>
+```
+
+Sample output:
+
+```console
+Add { auto_broadcast = numpy } : i64[S], i64[S] -> i64[S]       33
+Add { auto_broadcast = numpy } : f32[?,?,S], f32[?,?,S] -> f32[?,?,S]   64
+Add { auto_broadcast = numpy } : i32[], i32[S] -> i32[S]        32
+Assign { variable_id = S } : f32[?,S,?,S] -> f32[?,S,?,S]       64
+Broadcast { mode = numpy } : f32[], i64[S] -> f32[?,S,S,S]      64
+Broadcast { mode = bidirectional } : f32[S,S,S], i64[S] -> f32[?,S,S]   1
+Concat { axis = 0 } : i64[S], i64[S], i64[S], i64[S] -> i64[S]  66
+Concat { axis = 0 } : i64[S], i64[S] -> i64[S]  2
+Constant { element_type = f32, shape = [] } :  -> f32[] 70
+Constant { element_type = i64, shape = [S] } :  -> i64[S]       1358
+Constant { element_type = i64, shape = [] } :  -> i64[] 116
+Parameter { shape = [?], element_type = i32 } :  -> i32[?]      1
+Parameter { shape = [?,?], element_type = i64 } :  -> i64[?,?]  3
+ReadValue { variable_id = S, variable_type = f32, variable_shape = [?,S,?,S] } : f32[?,S,S,S] -> f32[?,S,?,S]   64
+Result {  } : f32[?,?,S] -> f32[?,?,S]  1
+```

@@ -13,6 +13,7 @@ setup(
             'ov2py = openvino_devtools.ov2py:main',
             'ovdiff = openvino_devtools.ovdiff:main',
             'ov2svg = openvino_devtools.ov2svg:main',
+            'ovstat = openvino_devtools.ovstat:main',
         ],
     },
 )
