@@ -4,6 +4,7 @@ This repository includes several tools:
 - ov2py
 - ovdiff
 - ov2svg
+- ovstat
 
 They all are available as command line scripts after installation. See usage details for each tool below.
 
