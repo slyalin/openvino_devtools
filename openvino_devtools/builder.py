@@ -87,8 +87,8 @@ class Operation:
         # FIXME: avoid calling this function twice (here and in that place where the entire program is constructed), it is too bold
         self.get_python_code()
 
-    def get_python_code(self, with_node_names=False):
-        return self.printer.get_op_statement_in_python(self.model, self.i, self.op, with_node_names=with_node_names)
+    def get_python_code(self, with_node_names=False, with_tensor_names=True):
+        return self.printer.get_op_statement_in_python(self.model, self.i, self.op, with_node_names=with_node_names, with_tensor_names=with_tensor_names)
 
     def relative_id(self):
         if self.relative_id_cache is None:
@@ -121,7 +121,7 @@ class ModelPrinter:
     def get_tensor_distance(self, tensor1, tensor2):
         return int(self.tensor_dict[tensor1][1:]) - int(self.tensor_dict[tensor2][1:])
 
-    def get_op_statement_in_python (self, model, i, op, with_node_names=False):
+    def get_op_statement_in_python (self, model, i, op, with_node_names=False, with_tensor_names=True):
         inputs = '[' + ', '.join([self.get_tensor(port.get_source_output()) for port in op.inputs()]) + '], '
         outputs = ', '.join([self.get_tensor(port) for port in op.outputs()])
         attrs = ', '.join([f'{get_attribute_name_in_python(k)}: {get_attribute_value_in_python(v)}' for k, v in op.get_attributes().items()])
@@ -145,9 +145,13 @@ class ModelPrinter:
         elif op.get_type_name() == 'Assign':
             self.sinks[get_sink_index(model, op)] = self.get_tensor(op.output(0))
         attrs = '{' + attrs + '}'
-        return align_text(f'{outputs} = opset.{op.get_type_name()}({inputs}{attrs}{node_name}{get_output_names(op)})  ', f'# {input_types} -> {output_types}')
+        if with_tensor_names:
+            output_names = get_output_names(op)
+        else:
+            output_names = ''
+        return align_text(f'{outputs} = opset.{op.get_type_name()}({inputs}{attrs}{node_name}{output_names})  ', f'# {input_types} -> {output_types}')
 
-    def model_to_python(self, model, name='build_model', with_node_names=False, path_to_source_model=None, entry_point=False):
+    def model_to_python(self, model, name='build_model', with_node_names=False, path_to_source_model=None, entry_point=False, with_tensor_names=True):
         new_op_trace = []
         result = f'def {name}(model):\n'
         indent = '    '
@@ -194,7 +198,7 @@ class ModelPrinter:
         result += '\n'
 
         for op in new_op_trace:
-            result += indent + op.get_python_code(with_node_names) + '\n'
+            result += indent + op.get_python_code(with_node_names=with_node_names, with_tensor_names=with_tensor_names) + '\n'
 
         result += '\n'
         result += indent + 'parameters = [' + ', '.join(sort_dict(self.parameters)) + ']\n'
