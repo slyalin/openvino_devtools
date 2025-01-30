@@ -80,6 +80,7 @@ def find_repeated_pair_subgraphs(graph: nx.MultiDiGraph):
         if (u, v) in pairs:
             continue
         # check if there is an alternative path from u to v
+        # TODO: later in the code we will disable contraction of nodes that have a side output from u node so this check is redundant with having that limitation
         if has_alternate_path_dag(graph, path_counts_dag, u, v):
             continue
         pairs.add((u, v))
@@ -121,6 +122,13 @@ def find_repeated_pair_subgraphs(graph: nx.MultiDiGraph):
             return output_ports
 
         u_output_ports = collect_output_ports(u, v)
+
+        if u_output_ports:
+            # TODO
+            # temporary disable conraction of nodes with side outputs from u node because it will lead to more expensive logic where such contraction produce
+            # a new path that then after another contraction produce a loop
+            continue
+
         v_output_ports = collect_output_ports(v)
 
         # TODO: Some operations are comutative and some are not. We need to take it into account to decrease the number of subgraphs.
@@ -223,6 +231,7 @@ def contract_subgraphs(graph, merge_pairs, new_labels):
         for pair in pairs:
             u, v = pair
             new_node = contract_nodes(graph, u, v, signature)
+            assert nx.is_directed_acyclic_graph(graph), f"Graph is not a DAG after contracting nodes {u} and {v} with signature label {new_labels[signature]}:\n{signature}"
             graph.nodes[new_node]['label'] = new_labels[signature]
 
 # Function that prints networkx graph with pseudographics in console.
@@ -235,7 +244,7 @@ def print_graph(graph):
 # Prints a graph as a program where nodes are operations and edges are data flows.
 # Each statement has a form: tI = statement(in_port_0=tX, in_port_1=tY, ...), where each Z in each port_Z contains labels from edges which corresponds to in_port mark. So if an edge has attribute in_port=0, then it will be in_port_0.
 # Statements are printed in topological order.
-def print_dag_as_program(graph: nx.MultiDiGraph, name):
+def print_dag_as_program(graph: nx.MultiDiGraph, name, comment=None):
     topo_order = list(nx.topological_sort(graph))
     output_port_marks = {}  # dict that maps an edge identified as source node and output port lable from the edge data to the variable name
 
@@ -246,6 +255,8 @@ def print_dag_as_program(graph: nx.MultiDiGraph, name):
             output_port_marks[(node, 0)] = f"t{index}"
 
     args = ",".join(f"t{i}" for i in range(len(output_port_marks)))
+    if comment:
+        print(f'# {comment}')
     print(f'def {name}({args}):')
 
     for node in topo_order:
@@ -301,8 +312,6 @@ def print_dag_as_program(graph: nx.MultiDiGraph, name):
         print(f"return {output_part}")
 
 
-
-
 # Represent a SubgraphPairSignature as an nx.MultiDiGraph instance.
 # The core of this graph is two nodes from the subgraph: producer (u) and consumer (v). The labels on those nodes correspond to u and v labels from the signature.
 # Those nodes are connected with edges from the inner_edges field of the signature. Each edge is a pair of output port of u and input port of v.
@@ -330,7 +339,7 @@ def subgraph_signature_to_graph(signature: SubgraphPairSignature):
         input_index_base += 1
     for u_output_port in signature.u_output_ports:
         graph.add_node(node_index_base, label="__Output__", index=output_index_base)
-        graph.add_edge(1, node_index_base, in_port=0, out_port=u_output_port)
+        graph.add_edge(0, node_index_base, in_port=0, out_port=u_output_port)
         node_index_base += 1
         output_index_base += 1
     for v_output_port in signature.v_output_ports:
@@ -342,6 +351,49 @@ def subgraph_signature_to_graph(signature: SubgraphPairSignature):
     assert input_index_base == len(signature.u_input_ports) + len(signature.v_input_ports)
     assert output_index_base == len(signature.u_output_ports) + len(signature.v_output_ports)
     return graph
+
+
+def contract_recursive(graph, print_each_iter=False):
+    subgraph_base_index = 0
+    non_terminal_labels = {}  # dict that maps lable to subgraph description and count of usages
+
+    def print_subgraph_signatures(non_terminal_labels):
+        for new_label, signature in non_terminal_labels.items():
+            subgraph_graph = subgraph_signature_to_graph(signature[0])
+            print_dag_as_program(subgraph_graph, new_label, comment=f"use count: {signature[1]}")
+            print()
+
+    while(True):
+        if print_each_iter:
+            print_dag_as_program(graph, 'main')
+            print('\n##############################################################################\n')
+        merge_pairs = produce_merge_pairs(graph)
+        if not merge_pairs:
+            break
+        # create new labels in form "S" + str(i) for each signature, build a dict with subgraph description as a key and new label as a value
+        # labels can have any type including subgraph description by it is more convenient to use strings for debugging
+        new_labels = {k: f"S{i+subgraph_base_index}" for i, (k, _) in enumerate(merge_pairs.items())}
+        non_terminal_labels.update({v: (k, len(merge_pairs[k])) for k, v in new_labels.items()})
+        if print_each_iter:
+            print_subgraph_signatures(non_terminal_labels)
+        subgraph_base_index += len(new_labels)
+        assert nx.is_directed_acyclic_graph(graph)
+        contract_subgraphs(graph, merge_pairs, new_labels)
+
+        def print_loop(graph):
+            loop = nx.find_cycle(graph)
+            if loop:
+                print("[ ERROR ] Loop found:", loop)
+                # print lables of nodes in the loop vertices:
+                for u, v, _ in loop:
+                    print(f"Loop edge: {get_node_label(graph, u)} -> {get_node_label(graph, v)}")
+
+        assert nx.is_directed_acyclic_graph(graph), print_loop(graph)
+
+    if not print_each_iter:
+        print_subgraph_signatures(non_terminal_labels)
+        print_dag_as_program(graph, 'main')
+
 
 def test_find_repeated_pair_subgraphs():
     graph = nx.MultiDiGraph()
@@ -369,31 +421,8 @@ def test_find_repeated_pair_subgraphs():
 
     print('-'*80)
 
-    subgraph_base_index = 0
+    contract_recursive(graph)
 
-    non_terminal_labels = {}  # dict that maps lable to subgraph description
-
-    while(True):
-        print_dag_as_program(graph, 'main')
-        print('\n--------------------------------------------------\n')
-        merge_pairs = produce_merge_pairs(graph)
-        if not merge_pairs:
-            break
-        # create new labels in form "S" + str(i) for each signature, build a dict with subgraph description as a key and new label as a value
-        # labels can have any type including subgraph description by it is more convenient to use strings for debugging
-        new_labels = {k: f"S{i+subgraph_base_index}" for i, (k, _) in enumerate(merge_pairs.items())}
-        non_terminal_labels.update({v: k for k, v in new_labels.items()})
-        for new_label, signature in non_terminal_labels.items():
-            subgraph_graph = subgraph_signature_to_graph(signature)
-            print_dag_as_program(subgraph_graph, new_label)
-            print()
-        subgraph_base_index += len(new_labels)
-        contract_subgraphs(graph, merge_pairs, new_labels)
-        #print_graph(graph)
-
-    # print all non-terminals with their labels
-    #print("Non-terminals:")
-    #pp.pprint(non_terminal_labels)
 
 if __name__ == '__main__':
     test_find_repeated_pair_subgraphs()
