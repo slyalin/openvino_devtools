@@ -173,6 +173,9 @@ def mergers(d):
     result = OrderedDict()
     visited = set()
     for k, v in d:
+        # disable merging of not repeated operations
+        if len(v) == 1:
+            continue
         for pair in v:
             if not visited.intersection(set(pair)):
                 visited.update(set(pair))
@@ -244,7 +247,7 @@ def print_graph(graph):
 # Prints a graph as a program where nodes are operations and edges are data flows.
 # Each statement has a form: tI = statement(in_port_0=tX, in_port_1=tY, ...), where each Z in each port_Z contains labels from edges which corresponds to in_port mark. So if an edge has attribute in_port=0, then it will be in_port_0.
 # Statements are printed in topological order.
-def print_dag_as_program(graph: nx.MultiDiGraph, name, comment=None):
+def print_dag_as_program(graph: nx.MultiDiGraph, name, label_printer, comment=None):
     topo_order = list(nx.topological_sort(graph))
     output_port_marks = {}  # dict that maps an edge identified as source node and output port lable from the edge data to the variable name
 
@@ -292,11 +295,10 @@ def print_dag_as_program(graph: nx.MultiDiGraph, name, comment=None):
         # convert output_values from dict to list where key is an index
         output_values = [v for k, v in sorted(output_values.items())]
         output_part = ", ".join(output_values)
-        input_part = ", ".join(input_args)
         print(4*' ', end="")
         if output_part:
             print(output_part, end=" = ")
-        print(f"{label}({input_part})")
+        print(label_printer(label, input_args))
 
     # Handle all __Output__ nodes by collecting all of them and then printing a single return tX, tY, ... statement in order of `index` attribute attached to each __Output__ node
     output_nodes = [node for node in topo_order if get_node_label(graph, node) == "__Output__"]
@@ -353,19 +355,19 @@ def subgraph_signature_to_graph(signature: SubgraphPairSignature):
     return graph
 
 
-def contract_recursive(graph, print_each_iter=False):
+def contract_recursive(graph, label_printer, print_each_iter=False):
     subgraph_base_index = 0
     non_terminal_labels = {}  # dict that maps lable to subgraph description and count of usages
 
     def print_subgraph_signatures(non_terminal_labels):
         for new_label, signature in non_terminal_labels.items():
             subgraph_graph = subgraph_signature_to_graph(signature[0])
-            print_dag_as_program(subgraph_graph, new_label, comment=f"use count: {signature[1]}")
+            print_dag_as_program(subgraph_graph, new_label, label_printer, comment=f"use count: {signature[1]}")
             print()
 
     while(True):
         if print_each_iter:
-            print_dag_as_program(graph, 'main')
+            print_dag_as_program(graph, 'main', label_printer)
             print('\n##############################################################################\n')
         merge_pairs = produce_merge_pairs(graph)
         if not merge_pairs:
@@ -392,7 +394,7 @@ def contract_recursive(graph, print_each_iter=False):
 
     if not print_each_iter:
         print_subgraph_signatures(non_terminal_labels)
-        print_dag_as_program(graph, 'main')
+        print_dag_as_program(graph, 'main', label_printer)
 
 
 def test_find_repeated_pair_subgraphs():
