@@ -354,16 +354,86 @@ def subgraph_signature_to_graph(signature: SubgraphPairSignature):
     assert output_index_base == len(signature.u_output_ports) + len(signature.v_output_ports)
     return graph
 
+# Replace one given node in a given graph by a subgraph.
+# The subgraph contains __Input__ and __Output__ nodes (there can be multiple nodes of each kind) that should be removed and connected to corresponding nodes in the graph according to
+# `index` attribute assigned to __Input__ and __Output__ nodes and in_port and out_port marks correspondingly on edges that goes out and in surrounding nodes correspondingly in the original graph w.r.t. replaced node.
+def inline_subgraph(graph, node, subgraph):
+    # Go over all nodes in subgraph and replicate each node except __Input__ and __Output__ nodes in the main graph
+    subgraph_node_to_graph_node = {}
+    for subgraph_node in subgraph.nodes():
+        label = get_node_label(subgraph, subgraph_node)
+        if label not in ["__Input__", "__Output__"]:
+            graph_node = max(graph.nodes) + 1
+            graph.add_node(graph_node, label=label)
+            subgraph_node_to_graph_node[subgraph_node] = graph_node
+
+    # Go over all edges in subgraph and replicate each edge in the main graph and also handle __Input__ and __Output__ connections.
+    # It is an 1:1 edge correspondence except output edges that goes to __Output__ edges, because there can be multiple edges with the same output port in the main graph.
+    for subgraph_src, subgraph_dst, subgraph_edge_data in subgraph.edges(data=True):
+        subgraph_src_label = get_node_label(subgraph, subgraph_src)
+        subgraph_dst_label = get_node_label(subgraph, subgraph_dst)
+        # The code below supposes that there is no direct links from __Input__ to __Output__ in the subgraph
+        if subgraph_src_label == "__Input__":
+            input_index = subgraph.nodes[subgraph_src]['index']
+            # find an edge that has the same in_port index, there should be only one edge with such in_port index
+            for src, dst, edge in graph.in_edges(node, data=True):
+                if get_edge_in_port(edge) == input_index:
+                    graph.add_edge(src, subgraph_node_to_graph_node[subgraph_dst], in_port=get_edge_in_port(subgraph_edge_data), out_port=get_edge_out_port(edge))
+        elif subgraph_dst_label == "__Output__":
+            output_index = subgraph.nodes[subgraph_dst]['index']
+            # find an edge that has the same out_port index, there can be multiple edges with the same out_port index
+            for src, dst, edge in graph.out_edges(node, data=True):
+                if get_edge_out_port(edge) == output_index:
+                    graph.add_edge(subgraph_node_to_graph_node[subgraph_src], dst, in_port=get_edge_in_port(edge), out_port=get_edge_out_port(subgraph_edge_data))
+        else:
+            graph.add_edge(subgraph_node_to_graph_node[subgraph_src], subgraph_node_to_graph_node[subgraph_dst], in_port=get_edge_in_port(subgraph_edge_data), out_port=get_edge_out_port(subgraph_edge_data))
+    graph.remove_node(node)
+
+
+# Inline all subgraph nodes that are used only once in other subgraph, remove such subgraphs.
+# The function traverse all nodes in a given graph and for each node that has a label that is among the list of subgraph nodes it checks if this node is used only once.
+# If it is used only once, then it replaces the node with the subgraph that corresponds to the label of the node.
+# subgraphs argument is dict that maps a lable to a subgraph.
+def inline_subgraphs(subgraphs):
+    while True:
+        # find the first subgraph that is used only once in all other graphs
+        for subgraph_label, subgraph in subgraphs.items():
+            count = 0
+            if subgraph_label is None:  # main graph has None label, it cannot be used anywhre, so we are skipping
+                continue
+            for graph_label, graph in subgraphs.items():
+                if graph is subgraph:
+                    continue  # no sense to check the same graph because no recursive subgraphs are allowed
+                for node in graph.nodes():
+                    label = get_node_label(graph, node)
+                    if isinstance(label, str) and get_node_label(graph, node) == subgraph_label:
+                        count += 1
+                        caller_subgraph_label = graph_label
+                        target_subgraph_label = subgraph_label
+                        caller_node = node
+                        if count > 1:
+                            break
+                if count > 1:
+                    break
+            if count == 1:
+                break
+        if count != 1:
+            break
+        inline_subgraph(subgraphs[caller_subgraph_label], caller_node, subgraphs[target_subgraph_label])
+        del subgraphs[target_subgraph_label]
+
 
 def contract_recursive(graph, label_printer, print_each_iter=False):
     subgraph_base_index = 0
     non_terminal_labels = {}  # dict that maps lable to subgraph description and count of usages
 
-    def print_subgraph_signatures(non_terminal_labels):
-        for new_label, signature in non_terminal_labels.items():
-            subgraph_graph = subgraph_signature_to_graph(signature[0])
-            print_dag_as_program(subgraph_graph, new_label, label_printer, comment=f"use count: {signature[1]}")
+    def print_subgraph(subgraphs):
+        for label, subgraph in subgraphs.items():
+            print_dag_as_program(subgraph, label, label_printer)
             print()
+
+    def print_subgraph_signatures(non_terminal_labels):
+        print_subgraph({k: subgraph_signature_to_graph(v) for k, v in non_terminal_labels.items()})
 
     while(True):
         if print_each_iter:
@@ -375,7 +445,7 @@ def contract_recursive(graph, label_printer, print_each_iter=False):
         # create new labels in form "S" + str(i) for each signature, build a dict with subgraph description as a key and new label as a value
         # labels can have any type including subgraph description by it is more convenient to use strings for debugging
         new_labels = {k: f"S{i+subgraph_base_index}" for i, (k, _) in enumerate(merge_pairs.items())}
-        non_terminal_labels.update({v: (k, len(merge_pairs[k])) for k, v in new_labels.items()})
+        non_terminal_labels.update({v: k for k, v in new_labels.items()})
         if print_each_iter:
             print_subgraph_signatures(non_terminal_labels)
         subgraph_base_index += len(new_labels)
@@ -392,8 +462,12 @@ def contract_recursive(graph, label_printer, print_each_iter=False):
 
         assert nx.is_directed_acyclic_graph(graph), print_loop(graph)
 
+    all_subgraphs = {k: subgraph_signature_to_graph(v) for k, v in non_terminal_labels.items()}
+    all_subgraphs[None] = graph
+    inline_subgraphs(all_subgraphs)
+
     if not print_each_iter:
-        print_subgraph_signatures(non_terminal_labels)
+        print_subgraph({k: v for k, v in all_subgraphs.items() if k is not None})
         print_dag_as_program(graph, 'main', label_printer)
 
 
