@@ -131,6 +131,12 @@ def find_repeated_pair_subgraphs(graph: nx.MultiDiGraph):
 
         v_output_ports = collect_output_ports(v)
 
+        if len(v_output_ports) != 1:
+            # TODO
+            # Also disable more than one output from v node
+            continue
+
+
         # TODO: Some operations are comutative and some are not. We need to take it into account to decrease the number of subgraphs.
         signature = SubgraphPairSignature(
             node_u_label=get_node_label(graph, u),
