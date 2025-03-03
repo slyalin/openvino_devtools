@@ -19,7 +19,13 @@ def serialize_model_svg (model, output_name='serialized_model.svg'):
     #TODO: Keep original values of envs and restore them in the end
     from openvino.runtime.passes import VisualizeTree
     set_graph_dumper_env(True)
-    VisualizeTree(output_name).run_on_model(model)
+    vt = VisualizeTree(output_name)
+    try:
+        # starting with openvino==2025.0, where backward incompatible changes were introduced
+        vt.run_on_model(model._Model__model)
+    except:
+        # for elder openvino versions
+        vt.run_on_model(model)
     set_graph_dumper_env(False)
 
 def ov2svg (input_name, output_name=None):
