@@ -59,9 +59,10 @@ def ovstat(path: str, obfuscate: bool):
     op_statistics(model, stat, obfuscate)
     keys = list(stat)
     keys.sort(key=lambda x: x[0] + x[2] + x[1])
+    format_len = len(str(max(stat.values(), key=lambda x: x[1])[1]))
     for key in keys:
         opstat = stat[key]
-        print(key[0] + ' ' + key[2] + ' : ' + key[1] + '\t' + str(opstat[1]))
+        print(f'{opstat[1]:{format_len}} {key[0]} {key[2]} : {key[1]}')
 
 
 def parse_arguments():
