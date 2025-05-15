@@ -4,7 +4,7 @@ import sys
 
 def ov2py(model, with_node_names=False, path_to_source_model=None, entry_point=False, with_tensor_names=True):
     printer = builder.ModelPrinter()
-    return printer.model_to_python(model, with_node_names=with_node_names, path_to_source_model=path_to_source_model, entry_point=entry_point, with_tensor_names=with_tensor_names)
+    return printer.implement_model(model, with_node_names=with_node_names, path_to_source_model=path_to_source_model, entry_point=entry_point, with_tensor_names=with_tensor_names)
 
 def main():
     model_path = sys.argv[1]
