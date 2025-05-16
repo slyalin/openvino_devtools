@@ -355,6 +355,7 @@ class CppModelPrinter(ModelPrinter):
             element_type = None
         old = align_text(f'{outputs} = opset.{op.get_type_name()}({inputs}{attrs}{node_name}{output_names})  ', f'# {input_types} -> {output_types}')
         # TODO: typed var names
+        # TODO: op.visit_attributes(AttributeVisitor)
         # print(op.get_type_name())
         # if op.get_type_name() == 'Constant':
         #     breakpoint()
