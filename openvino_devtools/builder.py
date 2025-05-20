@@ -288,7 +288,7 @@ class CppModelPrinter(ModelPrinter):
             inputs = ', '.join(self.get_tensor(port.get_source_output()) for port in op.inputs())
             element_type = None
         elif op.get_type_name() == 'Reshape':
-            inputs = ', '.join(self.get_tensor(port.get_source_output()) for port in op.inputs()) + ', false'
+            inputs = ', '.join(self.get_tensor(port.get_source_output()) for port in op.inputs()) + ', ' + str(op.get_special_zero()).lower()
             element_type = None
         elif op.get_type_name() == 'Convert':
             inputs = self.get_tensor(op.inputs()[0].get_source_output())
@@ -353,20 +353,19 @@ class CppModelPrinter(ModelPrinter):
             inputs = ', '.join(self.get_tensor(port.get_source_output()) for port in op.inputs())
             inputs += f', {outputs}_attrs'
             element_type = None
+        elif op.get_type_name() == 'Tile':
+            inputs = ', '.join(self.get_tensor(port.get_source_output()) for port in op.inputs())
+            element_type = None
         old = align_text(f'{outputs} = opset.{op.get_type_name()}({inputs}{attrs}{node_name}{output_names})  ', f'# {input_types} -> {output_types}')
         # TODO: typed var names
         # TODO: op.visit_attributes(AttributeVisitor)
         # print(op.get_type_name())
-        # if op.get_type_name() == 'Constant':
-        #     breakpoint()
         args = ', '.join(str(arg) for arg in (inputs, element_type, shape) if arg is not None)
         new = align_text(f'auto {outputs} = make_shared<{op.get_type_name()}>({args});  ', f'// {input_types} -> {output_types}')
         output_names = ', '.join(', '.join(sorted(f'"{name}"' for name in port.get_names())) for port in op.outputs())
         indent = '    '
         if op.get_type_name() == 'Parameter' or op.get_type_name() == 'Result':
             new += f'\n{indent}{outputs}->output(0).get_tensor().set_names({{{output_names}}});'
-        # if op.get_type_name() == 'Constant':
-        #     breakpoint()
         if temp_var is not None:
             new = temp_var + '\n' + indent + new
         return new
@@ -437,7 +436,7 @@ int main() {
     auto ireq = ov::Core{}.compile_model(model, "CPU").create_infer_request();
     // std::cout << ireq.get_tensor("1").get_shape() << '\\n';
     bool compress_to_fp16 = false;
-    ov::save_model(model, "res/a.xml", compress_to_fp16);
+    ov::save_model(model, "res_separators/a.xml", compress_to_fp16);
 }"""
         return result
 
