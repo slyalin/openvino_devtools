@@ -264,7 +264,7 @@ class CppModelPrinter(ModelPrinter):
                     else:
                         suffix = ''
                     values = str(fill_value) + suffix
-            new = align_text(f'auto {outputs} = make_shared<{op.get_type_name()}>({element_type}, {shape}, {values});  ', f'// {input_types} -> {output_types}{value}')
+            new = align_text(f'auto {outputs} = make_shared<{op.get_type_name()}>({element_type}, {shape}, {str(values).lower()});  ', f'// {input_types} -> {output_types}{value}')
             return new
         elif op.get_type_name() == 'Parameter':
             self.parameters[model.get_parameter_index(op)] = self.get_tensor(op.output(0))
@@ -356,6 +356,11 @@ class CppModelPrinter(ModelPrinter):
         elif op.get_type_name() == 'Tile':
             inputs = ', '.join(self.get_tensor(port.get_source_output()) for port in op.inputs())
             element_type = None
+        elif op.get_type_name() == 'ReduceMin':
+            inputs = ', '.join(self.get_tensor(port.get_source_output()) for port in op.inputs()) + ', ' + str(op.get_keep_dims()).lower()
+            element_type = None
+        elif op.get_type_name() == 'Loop':
+            print('recursion with op.set_function()')
         old = align_text(f'{outputs} = opset.{op.get_type_name()}({inputs}{attrs}{node_name}{output_names})  ', f'# {input_types} -> {output_types}')
         # TODO: typed var names
         # TODO: op.visit_attributes(AttributeVisitor)
