@@ -359,6 +359,9 @@ class CppModelPrinter(ModelPrinter):
         elif op.get_type_name() == 'ReduceMin':
             inputs = ', '.join(self.get_tensor(port.get_source_output()) for port in op.inputs()) + ', ' + str(op.get_keep_dims()).lower()
             element_type = None
+        elif op.get_type_name() == 'Bucketize':
+            inputs = ', '.join(self.get_tensor(port.get_source_output()) for port in op.inputs()) + ', ' + element_type + ', ' + str(op.get_with_right_bound()).lower()
+            element_type = None
         elif op.get_type_name() == 'Loop':
             print('recursion with op.set_function()')
         old = align_text(f'{outputs} = opset.{op.get_type_name()}({inputs}{attrs}{node_name}{output_names})  ', f'# {input_types} -> {output_types}')
